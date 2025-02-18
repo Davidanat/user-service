@@ -15,11 +15,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserServices struct {
+type UserService struct {
 	repository repositories.IRepositoryRegistry
 }
 
-type IUserServices interface {
+type IUserService interface {
 	Login(context.Context, *dto.LoginRequest) (*dto.LoginResponse, error)
 	Register(context.Context, *dto.RegisterRequest) (*dto.RegisterResponse, error)
 	Update(context.Context, *dto.UpdateRequest, string) (*dto.UserResponse, error)
@@ -27,8 +27,8 @@ type IUserServices interface {
 	GetUserByUUID(context.Context, string) (*dto.UserResponse, error)
 }
 
-func NewUserService(repository repositories.IRepositoryRegistry) IUserServices {
-	return &UserServices{repository: repository}
+func NewUserService(repository repositories.IRepositoryRegistry) IUserService {
+	return &UserService{repository: repository}
 }
 
 type Claims struct {
@@ -36,7 +36,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func (u *UserServices) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
+func (u *UserService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := u.repository.GetUser().FindByUsername(ctx, req.Username)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (u *UserServices) Login(ctx context.Context, req *dto.LoginRequest) (*dto.L
 	return response, nil
 }
 
-func (u *UserServices) isUsernameExist(ctx context.Context, username string) bool {
+func (u *UserService) isUsernameExist(ctx context.Context, username string) bool {
 	user, err := u.repository.GetUser().FindByUsername(ctx, username)
 	if err != nil {
 		return false
@@ -90,7 +90,7 @@ func (u *UserServices) isUsernameExist(ctx context.Context, username string) boo
 	return false
 }
 
-func (u *UserServices) isEmailExist(ctx context.Context, email string) bool {
+func (u *UserService) isEmailExist(ctx context.Context, email string) bool {
 	user, err := u.repository.GetUser().FindByEmail(ctx, email)
 	if err != nil {
 		return false
@@ -102,7 +102,7 @@ func (u *UserServices) isEmailExist(ctx context.Context, email string) bool {
 	return false
 }
 
-func (u *UserServices) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.RegisterResponse, error) {
+func (u *UserService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -121,11 +121,12 @@ func (u *UserServices) Register(ctx context.Context, req *dto.RegisterRequest) (
 	}
 
 	user, err := u.repository.GetUser().Register(ctx, &dto.RegisterRequest{
-		Name:     req.Name,
-		Username: req.Username,
-		Password: string(hashedPassword),
-		Email:    req.Email,
-		RoleID:   constants.Customer,
+		Name:        req.Name,
+		Username:    req.Username,
+		Password:    string(hashedPassword),
+		Email:       req.Email,
+		PhoneNumber: req.PhoneNumber,
+		RoleID:      constants.Customer,
 	})
 
 	if err != nil {
@@ -145,7 +146,7 @@ func (u *UserServices) Register(ctx context.Context, req *dto.RegisterRequest) (
 	return response, nil
 }
 
-func (u *UserServices) Update(ctx context.Context, req *dto.UpdateRequest, uuid string) (*dto.UserResponse, error) {
+func (u *UserService) Update(ctx context.Context, req *dto.UpdateRequest, uuid string) (*dto.UserResponse, error) {
 	var (
 		password                  string
 		checkUsername, checkEmail *models.User
@@ -181,7 +182,7 @@ func (u *UserServices) Update(ctx context.Context, req *dto.UpdateRequest, uuid 
 	}
 
 	if req.Password != nil {
-		if *&req.Password != *&req.ConfirmPassword {
+		if *req.Password != *req.ConfirmPassword {
 			return nil, errConstant.ErrPasswordDoesNotMatch
 		}
 
@@ -214,7 +215,7 @@ func (u *UserServices) Update(ctx context.Context, req *dto.UpdateRequest, uuid 
 	return &data, nil
 }
 
-func (u *UserServices) GetUserLogin(ctx context.Context) (*dto.UserResponse, error) {
+func (u *UserService) GetUserLogin(ctx context.Context) (*dto.UserResponse, error) {
 	var (
 		userLogin = ctx.Value(constants.UserLogin).(*dto.UserResponse)
 		data      dto.UserResponse
@@ -232,7 +233,7 @@ func (u *UserServices) GetUserLogin(ctx context.Context) (*dto.UserResponse, err
 	return &data, nil
 }
 
-func (u *UserServices) GetUserByUUID(ctx context.Context, uuid string) (*dto.UserResponse, error) {
+func (u *UserService) GetUserByUUID(ctx context.Context, uuid string) (*dto.UserResponse, error) {
 	user, err := u.repository.GetUser().FindByUUID(ctx, uuid)
 	if err != nil {
 		return nil, err

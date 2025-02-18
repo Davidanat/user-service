@@ -12,7 +12,7 @@ type UserResponse struct {
 	Username    string    `json:"username"`
 	Name        string    `json:"name"`
 	Email       string    `json:"email"`
-	Role        string    `json:"role"`
+	Role        string    `json:"role,omitempty"`
 	PhoneNumber string    `json:"phone_number"`
 }
 
